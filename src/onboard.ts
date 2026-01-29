@@ -1126,9 +1126,6 @@ export async function onboard(): Promise<void> {
     }
   }
   
-  // Also save .env for backwards compatibility
-  saveEnv(env);
-  
   // Save agent ID with server URL
   if (config.agentId) {
     const baseUrl = env.LETTA_BASE_URL || process.env.LETTA_BASE_URL || 'https://api.letta.com';
