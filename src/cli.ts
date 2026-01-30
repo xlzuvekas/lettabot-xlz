@@ -13,8 +13,13 @@ import { loadConfig, applyConfigToEnv } from './config/index.js';
 const config = loadConfig();
 applyConfigToEnv(config);
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
+
+// Get the directory where this CLI file is located (works with npx, global install, etc.)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import * as readline from 'node:readline';
 
 const args = process.argv.slice(2);
@@ -98,7 +103,8 @@ async function server() {
   console.log('Starting LettaBot server...\n');
   
   // Start the bot using the compiled JS
-  const mainPath = resolve(process.cwd(), 'dist/main.js');
+  // Use __dirname to find main.js relative to this CLI file (works with npx, global install, etc.)
+  const mainPath = resolve(__dirname, 'main.js');
   if (existsSync(mainPath)) {
     spawn('node', [mainPath], {
       stdio: 'inherit',
@@ -106,12 +112,20 @@ async function server() {
       env: { ...process.env },
     });
   } else {
-    // Fallback to tsx for development (use src/main.ts, not relative to dist/)
-    const mainTsPath = resolve(process.cwd(), 'src/main.ts');
-    spawn('npx', ['tsx', mainTsPath], {
-      stdio: 'inherit',
-      cwd: process.cwd(),
-    });
+    // Fallback to tsx for development - look for src/main.ts relative to package root
+    const packageRoot = resolve(__dirname, '..');
+    const mainTsPath = resolve(packageRoot, 'src/main.ts');
+    if (existsSync(mainTsPath)) {
+      spawn('npx', ['tsx', mainTsPath], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+      });
+    } else {
+      console.error('Error: Could not find main.js or main.ts');
+      console.error(`  Looked for: ${mainPath}`);
+      console.error(`  Looked for: ${mainTsPath}`);
+      process.exit(1);
+    }
   }
 }
 
